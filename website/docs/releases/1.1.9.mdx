@@ -1,9 +1,11 @@
 ---
-title: "v1.1.8 — Mercury Web, Kanban & Subconscious Memory"
-sidebar_label: "v1.1.8"
+title: "v1.1.9 — Mercury Web, Kanban & Subconscious Memory"
+sidebar_label: "v1.1.9"
 ---
 
-Release `1.1.8` introduces the **Mercury Web Dashboard** — a full React SPA at `localhost:6174` — alongside a persistent **Kanban board system**, an in-browser **Workspace IDE** with Git and AI commit messages, a **dual-layer (conscious + subconscious) Second Brain**, intelligent **skill batching**, and a cross-platform build pipeline.
+Release `1.1.9` introduces the **Mercury Web Dashboard** — a full React SPA at `localhost:6174` — alongside a persistent **Kanban board system**, an in-browser **Workspace IDE** with Git and AI commit messages, a **dual-layer (conscious + subconscious) Second Brain**, intelligent **skill batching**, and a cross-platform build pipeline.
+
+> **Note:** Version `1.1.8` was published briefly and then unpublished before reaching wide distribution due to a dependency-tree issue (a transitive `next` dependency inflating install size by ~285 MB). `1.1.9` ships the same feature set with a leaner dependency graph — install footprint dropped from ~429 MB to ~87 MB (**−80%**).
 
 ## Highlights
 
@@ -90,11 +92,35 @@ The Telegram `/memory` menu gained a 💤 **Subconscious** button mirroring the 
 
 - The TUI dashboard now displays **web server status** so you can see at a glance whether the dashboard is live and on which port.
 
+## Knowledge Graph UX
+
+- **Cleaner canvas** — the always-on text labels were causing severe overlap and unreadability on dense graphs. Labels now appear only on the hovered / selected node, with a rounded background pill for legibility.
+- **Smarter tooltip** — shows the full, untruncated memory summary (was previously trimmed to ~60 chars), wraps onto multiple lines, and flips to the left of the cursor when near the right edge so it's never clipped.
+- **Click-to-open detail dialog** — single-click on any node now opens a Radix dialog that fetches the full memory record (`GET /api/brain/memory/:id`) and shows summary, detail body, scope, importance, confidence, evidence count, source, and timestamps. Drag / pan still work — a 4 px / 500 ms threshold distinguishes a click from a drag.
+- **Graceful fallback** — nodes without a backing memory record (e.g. synthesized aggregates) still render their data inside the dialog.
+
 ## Build System
 
 - **Cross-platform `scripts/post-build.cjs`** replaces shell-only build steps — runs identically on macOS, Linux, and Windows. Calls `npx vite build`, copies `ui/dist` to `dist/web/ui`, and writes a kill-switch service worker.
 - **PWA cache kill-switch** — older versions of Mercury Web could serve stale bundles from the PWA cache. The new build writes a self-unregistering service worker that clears caches and reloads clients on first load after upgrade, guaranteeing users see the new UI.
 - Clean production build output with reduced artifact size and clearer logs.
+
+## Dependency Cleanup
+
+Three runtime dependencies were declared in `package.json` but never imported by `src/`:
+
+- `geist` — Vercel font wrapper. Fonts are vendored directly in `src/web/static/vendor/geist/`; the npm package transitively dragged in `next` and `@next/*` (~285 MB).
+- `js-tiktoken` — no usages anywhere in source.
+- `react-dom` — only used by `ui/` (which has its own `package.json`); `ink` does not require it.
+
+Removing all three reduces the end-user install footprint dramatically:
+
+| Metric | Before | After |
+|---|---|---|
+| `node_modules` size | ~429 MB | ~87 MB |
+| Package count | 114 | 95 |
+
+No functional change — typecheck, `tsup` bundle, and Vite UI build all pass unchanged.
 
 ## Notes
 
